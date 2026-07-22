@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>NoStressCapital - Dashboard</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#0f131b",
+            "surface-container": "#1c2028",
+            "outline-variant": "#424754",
+            "on-surface": "#dfe2ee",
+            "on-surface-variant": "#c2c6d6",
+            "primary": "#adc6ff",
+            "tertiary": "#4ae176",
+            "error": "#ffb4ab",
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #0B0E14; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #0B0E14; }
+    ::-webkit-scrollbar-thumb { background: #2D3748; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #424754; }
+    .tab-active { color: #3B82F6; border-bottom: 2px solid #3B82F6; }
+    .tab-inactive { color: #c2c6d6; border-bottom: 2px solid transparent; }
+  </style>
+</head>
+<body class="bg-[#0B0E14] text-[#dfe2ee] font-[Inter] min-h-screen flex flex-col">
+
+<!-- Nav -->
+<nav class="flex justify-between items-center h-16 px-6 w-full bg-[#0f131b] border-b border-[#424754] shrink-0">
+  <div class="flex items-center gap-4">
+    <span class="text-2xl font-bold text-[#adc6ff] tracking-tight">NoStressCapital</span>
+    <span id="mode-badge" class="bg-[#F97316] text-[#0B0E14] text-xs font-bold px-2 py-1 rounded">TESTNET</span>
+  </div>
+
+  <div class="hidden md:flex items-center gap-6 h-full">
+    <a class="h-full flex items-center text-[#adc6ff] border-b-2 border-[#adc6ff] text-sm" href="#">Dashboard</a>
+    <a class="h-full flex items-center text-[#c2c6d6] hover:text-white text-sm" href="#">Analytics</a>
+    <a class="h-full flex items-center text-[#c2c6d6] hover:text-white text-sm" href="#">Signals</a>
+    <a class="h-full flex items-center text-[#c2c6d6] hover:text-white text-sm" href="#">Journal</a>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <!-- Style toggle -->
+    <div class="hidden sm:flex bg-[#0B0E14] border border-[#2D3748] rounded p-1">
+      <button id="btn-style-daily" onclick="setStyle('daily')"
+        class="px-3 py-1 text-xs font-bold bg-[#3B82F6] text-white rounded transition-colors">Daily</button>
+      <button id="btn-style-weekly" onclick="setStyle('weekly')"
+        class="px-3 py-1 text-xs font-bold text-[#c2c6d6] hover:text-white transition-colors">Weekly</button>
+    </div>
+    <!-- Bot controls -->
+    <button id="btn-start" onclick="controlBot('start')"
+      class="hidden bg-[#22C55E] text-[#0B0E14] text-xs font-bold px-4 py-2 rounded hover:opacity-90 transition-opacity">Start Bot</button>
+    <button id="btn-stop" onclick="controlBot('stop')"
+      class="bg-[#EF4444] text-white text-xs font-bold px-4 py-2 rounded hover:bg-red-600 transition-colors">Stop Bot</button>
+    <!-- Status indicator -->
+    <div class="flex items-center gap-2 ml-1">
+      <span id="status-dot" class="w-2 h-2 rounded-full bg-[#6b7280]"></span>
+      <span id="status-text" class="text-xs text-[#c2c6d6] font-mono">OFFLINE</span>
+    </div>
+  </div>
+</nav>
+
+<!-- Main -->
+<main class="flex-1 overflow-y-auto p-6 grid grid-cols-1 md:grid-cols-12 gap-4 content-start">
+
+  <!-- Hero row -->
+  <div class="col-span-12 grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+    <!-- Price card -->
+    <div class="bg-[#151921] border border-[#2D3748] rounded-lg p-4 flex flex-col justify-center">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest">BTC/USDT</span>
+        <span class="material-symbols-outlined text-[#c2c6d6] text-[20px]">currency_bitcoin</span>
+      </div>
+      <div id="live-price" class="text-4xl font-bold font-[JetBrains_Mono] tracking-tight text-[#dfe2ee]">$--.--</div>
+    </div>
+
+    <!-- Signal card -->
+    <div class="bg-[#151921] border border-[#2D3748] rounded-lg p-4 flex flex-col justify-between">
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest">Current Signal</span>
+        <span id="signal-badge" class="bg-[#6b7280] text-[#0B0E14] text-xs font-bold px-2 py-1 rounded">WAIT</span>
+      </div>
+      <div>
+        <div id="confidence-label" class="text-2xl font-semibold text-[#dfe2ee] mb-2">0% Confidence</div>
+        <div class="w-full bg-[#0B0E14] h-[4px] rounded-full overflow-hidden">
+          <div id="confidence-bar" class="bg-[#6b7280] h-full transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Position bar -->
+  <div id="position-bar" class="col-span-12 bg-[#151921] border border-[#2D3748] rounded-lg p-4 hidden">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
+        <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest">Active Position</span>
+      </div>
+      <div class="flex flex-wrap gap-6 font-[JetBrains_Mono] text-sm">
+        <div><span class="text-[#c2c6d6] mr-2">Side:</span><span id="pos-side" class="text-[#dfe2ee]">--</span></div>
+        <div><span class="text-[#c2c6d6] mr-2">Entry:</span><span id="pos-entry" class="text-[#dfe2ee]">$--</span></div>
+        <div><span class="text-[#c2c6d6] mr-2">Stop:</span><span id="pos-sl" class="text-[#EF4444]">$--</span></div>
+        <div><span class="text-[#c2c6d6] mr-2">Target:</span><span id="pos-tp" class="text-[#22C55E]">$--</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- No position bar (shown when flat) -->
+  <div id="no-position-bar" class="col-span-12 bg-[#151921] border border-[#2D3748] rounded-lg p-4">
+    <div class="flex items-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-[#6b7280]"></span>
+      <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest">No Active Position — Scanning for setups</span>
+    </div>
+  </div>
+
+  <!-- Stat row -->
+  <div class="col-span-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div class="bg-[#151921] border border-[#2D3748] rounded-lg p-4">
+      <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest block mb-1">Win Rate</span>
+      <span id="stat-winrate" class="text-xl font-semibold font-[JetBrains_Mono] text-[#dfe2ee]">--%</span>
+    </div>
+    <div class="bg-[#151921] border border-[#2D3748] rounded-lg p-4">
+      <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest block mb-1">Total Trades</span>
+      <span id="stat-total" class="text-xl font-semibold font-[JetBrains_Mono] text-[#dfe2ee]">0</span>
+    </div>
+    <div class="bg-[#151921] border border-[#2D3748] rounded-lg p-4">
+      <span class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest block mb-1">Net P&amp;L</span>
+      <span id="stat-pnl" class="text-xl font-semibold font-[JetBrains_Mono] text-[#dfe2ee]">$0.00</span>
+    </div>
+  </div>
+
+  <!-- Data section: tabs -->
+  <div class="col-span-12 bg-[#151921] border border-[#2D3748] rounded-lg flex flex-col min-h-[300px]">
+    <div class="flex border-b border-[#2D3748] px-4 pt-2 gap-1">
+      <button id="tab-journal" onclick="switchTab('journal')"
+        class="px-4 py-2 text-xs font-bold tab-active">Trade Journal</button>
+      <button id="tab-signals" onclick="switchTab('signals')"
+        class="px-4 py-2 text-xs font-bold tab-inactive">Signal Reasoning</button>
+    </div>
+
+    <!-- Journal tab -->
+    <div id="panel-journal" class="overflow-x-auto p-4">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="text-xs font-bold text-[#c2c6d6] uppercase border-b border-[#2D3748]">
+            <th class="py-2 px-2 font-normal">Date</th>
+            <th class="py-2 px-2 font-normal">Pair</th>
+            <th class="py-2 px-2 font-normal">Side</th>
+            <th class="py-2 px-2 font-normal text-right">Entry</th>
+            <th class="py-2 px-2 font-normal text-right">Exit</th>
+            <th class="py-2 px-2 font-normal text-right">P&amp;L</th>
+            <th class="py-2 px-2 font-normal text-right">Result</th>
+          </tr>
+        </thead>
+        <tbody id="journal-body" class="font-[JetBrains_Mono] text-sm text-[#dfe2ee]">
+          <tr><td colspan="7" class="py-6 text-center text-[#c2c6d6] text-sm">No trades yet.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Signals tab -->
+    <div id="panel-signals" class="hidden p-4 flex flex-col gap-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-[#0B0E14] rounded-lg p-3">
+          <div class="text-xs font-bold text-[#22C55E] uppercase tracking-widest mb-2">Bull Case</div>
+          <ul id="bull-case-list" class="text-xs text-[#c2c6d6] space-y-1 list-disc list-inside">
+            <li class="text-[#6b7280] italic">Waiting for signal...</li>
+          </ul>
+        </div>
+        <div class="bg-[#0B0E14] rounded-lg p-3">
+          <div class="text-xs font-bold text-[#EF4444] uppercase tracking-widest mb-2">Bear Case</div>
+          <ul id="bear-case-list" class="text-xs text-[#c2c6d6] space-y-1 list-disc list-inside">
+            <li class="text-[#6b7280] italic">Waiting for signal...</li>
+          </ul>
+        </div>
+      </div>
+      <div class="bg-[#0B0E14] rounded-lg p-3">
+        <div class="text-xs font-bold text-[#c2c6d6] uppercase tracking-widest mb-2">Engine Reasoning</div>
+        <div id="engine-feed" class="text-xs text-[#c2c6d6] space-y-1 font-[JetBrains_Mono] max-h-40 overflow-y-auto">
+          <div class="text-[#6b7280] italic">Waiting for bot to start...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast" class="hidden fixed bottom-5 right-5 bg-[#3B82F6] text-white px-4 py-3 rounded-lg text-sm font-semibold shadow-lg z-50"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────
+function fmt(price) {
+  if (price == null || price === '') return '--';
+  return parseFloat(price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `fixed bottom-5 right-5 px-4 py-3 rounded-lg text-sm font-semibold shadow-lg z-50 ${isError ? 'bg-[#EF4444]' : 'bg-[#22C55E]'} text-white`;
+  setTimeout(() => t.classList.add('hidden'), 4000);
+}
+
+function switchTab(tab) {
+  const isJournal = tab === 'journal';
+  document.getElementById('panel-journal').classList.toggle('hidden', !isJournal);
+  document.getElementById('panel-signals').classList.toggle('hidden', isJournal);
+  document.getElementById('tab-journal').className = `px-4 py-2 text-xs font-bold ${isJournal ? 'tab-active' : 'tab-inactive'}`;
+  document.getElementById('tab-signals').className = `px-4 py-2 text-xs font-bold ${!isJournal ? 'tab-active' : 'tab-inactive'}`;
+}
+
+// ── API ───────────────────────────────────────────────────────────────
+async function fetchStatus() {
+  try {
+    const data = await fetch('/api/status').then(r => r.json());
+    updateStatus(data);
+  } catch(e) { console.error('status fetch failed', e); }
+}
+
+async function fetchStats() {
+  try {
+    const data = await fetch('/api/stats').then(r => r.json());
+    const wr = document.getElementById('stat-winrate');
+    const pnl = document.getElementById('stat-pnl');
+    document.getElementById('stat-total').textContent = data.total_trades ?? 0;
+    wr.textContent = data.total_trades > 0 ? `${(data.win_rate ?? 0).toFixed(1)}%` : '--%';
+    const p = data.total_pnl_usdt ?? 0;
+    pnl.textContent = (p >= 0 ? '+$' : '-$') + fmt(Math.abs(p));
+    pnl.className = `text-xl font-semibold font-[JetBrains_Mono] ${p > 0 ? 'text-[#22C55E]' : p < 0 ? 'text-[#EF4444]' : 'text-[#dfe2ee]'}`;
+  } catch(e) {}
+}
+
+async function fetchJournal() {
+  try {
+    const data = await fetch('/api/journal').then(r => r.json());
+    const tbody = document.getElementById('journal-body');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-[#c2c6d6] text-sm">No trades yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(t => {
+      const sideColor = t.decision === 'LONG' ? 'text-[#22C55E]' : 'text-[#EF4444]';
+      const pnl = t.pnl_usdt != null ? (t.pnl_usdt >= 0 ? `<span class="text-[#22C55E]">+$${fmt(t.pnl_usdt)}</span>` : `<span class="text-[#EF4444]">-$${fmt(Math.abs(t.pnl_usdt))}</span>`) : '<span class="text-[#c2c6d6]">--</span>';
+      const outcomeColor = t.outcome === 'WIN' ? 'text-[#22C55E]' : t.outcome === 'LOSS' ? 'text-[#EF4444]' : 'text-[#c2c6d6]';
+      const date = t.timestamp ? new Date(t.timestamp).toLocaleString('en-GB', {dateStyle:'short', timeStyle:'short'}) : '--';
+      return `<tr class="border-b border-[#2D3748] hover:bg-[#1C222D] transition-colors">
+        <td class="py-3 px-2 text-[#c2c6d6]">${date}</td>
+        <td class="py-3 px-2">BTC/USDT</td>
+        <td class="py-3 px-2 ${sideColor} font-bold">${t.decision ?? '--'}</td>
+        <td class="py-3 px-2 text-right">${t.entry_price != null ? '$'+fmt(t.entry_price) : '--'}</td>
+        <td class="py-3 px-2 text-right">${t.exit_price != null ? '$'+fmt(t.exit_price) : '--'}</td>
+        <td class="py-3 px-2 text-right">${pnl}</td>
+        <td class="py-3 px-2 text-right ${outcomeColor}">${t.outcome ?? '--'}</td>
+      </tr>`;
+    }).join('');
+  } catch(e) {}
+}
+
+async function controlBot(action) {
+  try {
+    const data = await fetch(`/api/${action}`, { method: 'POST' }).then(r => r.json());
+    showToast(data.message, !data.success);
+    fetchStatus();
+  } catch(e) { showToast(`Failed to ${action} bot`, true); }
+}
+
+async function setStyle(style) {
+  try {
+    const data = await fetch('/api/style', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ style })
+    }).then(r => r.json());
+    showToast(data.message, !data.success);
+    if (data.success) fetchStatus();
+  } catch(e) { showToast('Failed to set style', true); }
+}
+
+// ── UI update ─────────────────────────────────────────────────────────
+function updateStatus(data) {
+  // Price
+  if (data.price) document.getElementById('live-price').textContent = '$' + fmt(data.price);
+
+  // Signal badge
+  const badge = document.getElementById('signal-badge');
+  const sig = data.signal || 'WAIT';
+  const sigColors = { LONG: ['#22C55E', '#0B0E14'], SHORT: ['#EF4444', '#ffffff'], WAIT: ['#424754', '#dfe2ee'] };
+  const [bg, fg] = sigColors[sig] || sigColors.WAIT;
+  badge.textContent = sig;
+  badge.style.background = bg;
+  badge.style.color = fg;
+
+  // Confidence
+  const conf = data.confidence || 0;
+  document.getElementById('confidence-label').textContent = `${conf}% Confidence`;
+  const bar = document.getElementById('confidence-bar');
+  bar.style.width = `${conf}%`;
+  bar.style.background = sig === 'LONG' ? '#22C55E' : sig === 'SHORT' ? '#EF4444' : '#6b7280';
+
+  // Bot status controls
+  const running = data.status === 'running';
+  document.getElementById('status-dot').style.background = running ? '#22C55E' : '#6b7280';
+  document.getElementById('status-text').textContent = running ? `RUNNING (${data.uptime_seconds}s)` : 'OFFLINE';
+  document.getElementById('btn-start').classList.toggle('hidden', running);
+  document.getElementById('btn-stop').classList.toggle('hidden', !running);
+
+  // Style toggle visual
+  const isDaily = data.style !== 'weekly';
+  const dBtn = document.getElementById('btn-style-daily');
+  const wBtn = document.getElementById('btn-style-weekly');
+  dBtn.className = `px-3 py-1 text-xs font-bold rounded transition-colors ${isDaily ? 'bg-[#3B82F6] text-white' : 'text-[#c2c6d6] hover:text-white'}`;
+  wBtn.className = `px-3 py-1 text-xs font-bold rounded transition-colors ${!isDaily ? 'bg-[#3B82F6] text-white' : 'text-[#c2c6d6] hover:text-white'}`;
+  dBtn.disabled = running;
+  wBtn.disabled = running;
+
+  // Position bar
+  const pos = data.position;
+  document.getElementById('position-bar').classList.toggle('hidden', !pos);
+  document.getElementById('no-position-bar').classList.toggle('hidden', !!pos);
+  if (pos) {
+    document.getElementById('pos-side').textContent = pos.side || '--';
+    document.getElementById('pos-entry').textContent = pos.entry ? '$' + fmt(pos.entry) : '$--';
+    document.getElementById('pos-sl').textContent = pos.stop_loss ? '$' + fmt(pos.stop_loss) : '$--';
+    document.getElementById('pos-tp').textContent = pos.take_profit ? '$' + fmt(pos.take_profit) : '$--';
+  }
+
+  // Signal reasoning (Signals tab)
+  if (data.bull_case?.length) {
+    document.getElementById('bull-case-list').innerHTML = data.bull_case.map(r => `<li>${r}</li>`).join('');
+  }
+  if (data.bear_case?.length) {
+    document.getElementById('bear-case-list').innerHTML = data.bear_case.map(r => `<li>${r}</li>`).join('');
+  }
+  if (data.reasons?.length) {
+    const feed = document.getElementById('engine-feed');
+    feed.innerHTML = data.reasons.map(r => `<div class="py-0.5 border-b border-[#1c2028]">${r}</div>`).join('');
+  }
+}
+
+// ── Poll ──────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  fetchStatus();
+  fetchStats();
+  fetchJournal();
+  setInterval(() => { fetchStatus(); fetchStats(); fetchJournal(); }, 3000);
+});
+</script>
+</body>
+</html>

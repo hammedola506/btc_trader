@@ -118,7 +118,7 @@ class NotificationManager:
         """Attempt to deliver event across all enabled active providers with retries."""
         self.statistics.record_attempt(event.level, event.category)
         
-        active_providers = [p for p in self._providers if p.enabled]
+        active_providers = [p for p in self._providers if p.enabled and getattr(p, "is_configured", True)]
         if not active_providers:
             # If no external provider configured/enabled, still log to history & stats as success
             rec = event.to_dict()
@@ -126,6 +126,7 @@ class NotificationManager:
             self.history.add(rec)
             self.statistics.record_success()
             return True
+
 
         overall_success = False
 

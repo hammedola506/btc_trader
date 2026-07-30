@@ -45,8 +45,14 @@ class NumpyJSONProvider(DefaultJSONProvider):
             return bool(o)
         return super().default(o)
 
+from flask import Flask, jsonify, render_template, request, Response, make_response, session, redirect, url_for
+
 app = Flask(__name__)
 app.json = NumpyJSONProvider(app)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", os.environ.get("SECRET_KEY", "nsflux_production_session_secret_key_2026_nostress"))
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_PERMANENT"] = False
 
 # ── Authentication Helper Functions ──────────────────────────────────
 def check_auth(username, password):
@@ -76,13 +82,9 @@ def authenticate():
             "message": "Could not verify your access level. Valid credentials required."
         })
         response.status_code = 401
+        return add_security_headers(response)
     else:
-        response = Response(
-            'Could not verify your access level. Please log in with proper credentials.',
-            401
-        )
-    response.headers['WWW-Authenticate'] = 'Basic realm="NoStressCapital Dashboard Login Required"'
-    return add_security_headers(response)
+        return redirect(url_for("login"))
 
 def requires_auth(f):
     @wraps(f)
@@ -91,19 +93,71 @@ def requires_auth(f):
             res = make_response(f(*args, **kwargs))
             return add_security_headers(res)
             
+        # Check Session Authentication
+        if session.get("authenticated") is True:
+            res = make_response(f(*args, **kwargs))
+            return add_security_headers(res)
+
+        # Check HTTP Basic Auth (for backward compatibility with test scripts)
         auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-            
-        res = make_response(f(*args, **kwargs))
-        return add_security_headers(res)
+        if auth and check_auth(auth.username, auth.password):
+            res = make_response(f(*args, **kwargs))
+            return add_security_headers(res)
+
+        return authenticate()
     return decorated
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "GET":
+        if session.get("authenticated") is True:
+            return redirect(url_for("index"))
+        return render_template("login.html")
+
+    # POST handling
+    data = request.get_json(silent=True) or request.form or {}
+    username = data.get("username", "")
+    password = data.get("password", "")
+    remember = data.get("remember", False)
+    if isinstance(remember, str):
+        remember = remember.lower() in ("true", "1", "on", "yes")
+
+    if check_auth(username, password):
+        session.clear()
+        session["authenticated"] = True
+        if remember:
+            session.permanent = True
+
+        if request.is_json or "json" in request.headers.get("Accept", ""):
+            res = jsonify({"success": True, "redirect": "/"})
+            return add_security_headers(res)
+        return redirect(url_for("index"))
+    else:
+        log.warning(
+            f"FAILED LOGIN ATTEMPT | IP={request.remote_addr} | Username={username}"
+        )
+        if request.is_json or "json" in request.headers.get("Accept", ""):
+            res = jsonify({
+                "success": False,
+                "message": "Invalid username or password. Please check your credentials and try again."
+            })
+            res.status_code = 401
+            return add_security_headers(res)
+        return render_template("login.html", error="Invalid username or password.")
+
+@app.route("/logout", methods=["GET", "POST"])
+def logout():
+    session.clear()
+    if request.is_json or "json" in request.headers.get("Accept", ""):
+        res = jsonify({"success": True, "redirect": "/login"})
+        return add_security_headers(res)
+    return redirect(url_for("login"))
 
 @app.route("/", methods=["GET"])
 @requires_auth
 def index():
     return render_template("index.html")
+
 
 @app.route("/api/health", methods=["GET"])
 def health():

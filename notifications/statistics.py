@@ -37,12 +37,13 @@ class NotificationStatistics:
         with self._lock:
             self._check_day_rollover()
             self._stats["total"] += 1
-            lvl_key = str(level).upper()
+            lvl_key = (level.value if hasattr(level, "value") else str(level)).upper()
             if lvl_key in self._stats:
                 self._stats[lvl_key] += 1
-            cat_key = str(category).upper()
+            cat_key = (category.value if hasattr(category, "value") else str(category)).upper()
             if cat_key in self._stats:
                 self._stats[cat_key] += 1
+
 
     def record_success(self):
         with self._lock:

@@ -352,32 +352,18 @@
     <div class="lg:col-span-4 bg-[#151921] border border-[#2D3748] rounded-xl p-5 shadow-lg flex flex-col justify-between">
       <div class="flex justify-between items-center border-b border-[#2D3748] pb-3 mb-4">
         <h2 class="text-sm font-bold text-[#dfe2ee] tracking-wide uppercase flex items-center gap-2">
-          <span class="material-symbols-outlined text-[#22C55E] text-xl">monitor_heart</span> Diagnostics & Telemetry
+          <span class="material-symbols-outlined text-[#EC4899] text-xl">notifications</span> Live Alert Feed
         </h2>
-        <span class="text-xs text-[#8892b0]">System State</span>
+        <span id="notif-count-badge" class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#3B82F6]/20 text-[#3B82F6]">0 Alerts</span>
       </div>
 
-      <div class="space-y-2 text-xs mb-4">
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Engine Status</span>
-          <span id="diag-engine-status" class="mono font-bold text-[#22C55E]">RUNNING</span>
+      <div id="notif-feed-list" class="space-y-2 text-xs max-h-[350px] overflow-y-auto pr-1">
+        <div class="p-3 rounded bg-[#0B0E14] border border-[#2D3748] text-[#8892b0] italic text-center">
+          No notifications dispatched yet.
         </div>
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Bybit Connection</span>
-          <span id="diag-bybit-conn" class="mono font-bold text-[#22C55E]">CONNECTED</span>
-        </div>
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Database Lock State</span>
-          <span id="diag-db-state" class="mono font-bold text-[#22C55E]">WAL READY</span>
-        </div>
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Consecutive API Errors</span>
-          <span id="diag-errors" class="mono font-bold text-[#dfe2ee]">0 / 5</span>
-        </div>
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Circuit Breaker</span>
-          <span id="diag-circuit" class="mono font-bold text-[#22C55E]">NORMAL</span>
-        </div>
+      </div>
+    </div>
+
         <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
           <span class="text-[#8892b0]">Next Scan Countdown</span>
           <span id="diag-next-scan" class="mono font-bold text-[#3B82F6]">--s</span>
@@ -687,17 +673,52 @@
     window.location.href = '/api/journal/export';
   }
 
+  async function fetchNotifications() {
+    try {
+      const res = await fetch('/api/notifications/history?limit=15');
+      if (res.ok) {
+        const notifs = await res.json();
+        renderNotifFeed(notifs);
+      }
+    } catch (e) {}
+  }
+
+  function renderNotifFeed(notifs) {
+    const el = document.getElementById('notif-feed-list');
+    if (!el) return;
+    document.getElementById('notif-count-badge').textContent = `${notifs ? notifs.length : 0} Alerts`;
+    if (!notifs || notifs.length === 0) {
+      el.innerHTML = '<div class="p-3 rounded bg-[#0B0E14] border border-[#2D3748] text-[#8892b0] italic text-center">No notifications dispatched yet.</div>';
+      return;
+    }
+    el.innerHTML = notifs.map(n => {
+      let lvlColor = n.level === 'CRITICAL' ? 'border-[#EF4444] bg-[#EF4444]/10' : n.level === 'WARNING' ? 'border-[#F97316] bg-[#F97316]/10' : 'border-[#3B82F6] bg-[#3B82F6]/10';
+      return `
+        <div class="p-2 rounded bg-[#0B0E14] border-l-2 ${lvlColor} text-xs space-y-1">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-[#dfe2ee]">${n.title || n.event_type}</span>
+            <span class="text-[10px] text-[#8892b0] mono">${n.notification_id || ''}</span>
+          </div>
+          <p class="text-[#8892b0] text-[11px] line-clamp-2">${(n.message || '').replace(/<[^>]*>/g, '')}</p>
+        </div>
+      `;
+    }).join('');
+  }
+
   // 3-second polling loop
   setInterval(() => {
     fetchStatus();
     fetchStats();
+    fetchNotifications();
   }, 3000);
 
   // Initial load
   fetchStatus();
   fetchStats();
   fetchJournal();
+  fetchNotifications();
 </script>
 
 </body>
 </html>
+

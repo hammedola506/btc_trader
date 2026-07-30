@@ -255,6 +255,24 @@ def journal_clear():
     success, message = clear_trade_journal()
     return jsonify({"success": success, "message": message})
 
+@app.route("/api/notifications/history", methods=["GET"])
+@requires_auth
+def notifications_history():
+    """Returns rolling notification history for the dashboard."""
+    import notifications
+    limit = int(request.args.get("limit", 50))
+    level = request.args.get("level", None)
+    category = request.args.get("category", None)
+    return jsonify(notifications.get_history(limit=limit, level=level, category=category))
+
+@app.route("/api/notifications/stats", methods=["GET"])
+@requires_auth
+def notifications_stats():
+    """Returns runtime notification statistics for the dashboard."""
+    import notifications
+    return jsonify(notifications.get_statistics())
+
 if __name__ == "__main__":
+
     # Localhost binding is the correct default security posture
     app.run(host="127.0.0.1", port=5000, debug=False)

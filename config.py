@@ -84,7 +84,20 @@ MIN_CONFIDENCE_TO_TRADE = 80  # 0-100 score required to actually place a trade
 # ── Loop timing ───────────────────────────────────────────────────────
 POLL_INTERVAL_SECONDS = 60    # how often the bot checks the market
 
+# ── Notification System Settings ──────────────────────────────────────
+NOTIFICATION_ENABLED = os.environ.get("NOTIFICATION_ENABLED", "True").lower() in ("true", "1", "yes")
+NOTIFICATION_MIN_LEVEL = os.environ.get("NOTIFICATION_MIN_LEVEL", "INFO")
+NOTIFICATION_DEDUP_COOLDOWN_SEC = int(os.environ.get("NOTIFICATION_DEDUP_COOLDOWN_SEC", "60"))
+NOTIFICATION_HISTORY_SIZE = int(os.environ.get("NOTIFICATION_HISTORY_SIZE", "500"))
+NOTIFICATION_RATE_LIMIT = int(os.environ.get("NOTIFICATION_RATE_LIMIT", "30"))
+
+# Telegram Integration
+TELEGRAM_ENABLED = os.environ.get("TELEGRAM_ENABLED", "True").lower() in ("true", "1", "yes")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
+
 # ── Logging ───────────────────────────────────────────────────────────
 LOG_DIR = "logs"
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "trading_bot.log")
+

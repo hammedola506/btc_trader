@@ -114,32 +114,84 @@ def _bot_loop():
     """The background thread running the core trading engine."""
     global start_time
     start_time = time.time()
-    
+
+    import socket
+    import notifications
+    from notifications import templates, NotificationEvent, NotificationLevel, EventCategory
+
+    notifications.init_notifications(config)
+
     update_state(status="running", consecutive_errors=0, circuit_breaker_tripped=False)
-    
+
     try:
         exchange = data_fetcher.get_exchange()
         open_position = state_manager.load_state(exchange, config.SYMBOL)
         initial_wallet = data_fetcher.get_wallet_info(exchange, "USDT")
         update_state(position=open_position, wallet=initial_wallet)
+
+        # Dispatch Startup Notification
+        hostname = socket.gethostname()
+        mode_str = "DEMO TRADING" if getattr(config, "USE_DEMO_TRADING", False) else ("TESTNET" if config.USE_TESTNET else "LIVE")
+        startup_notif = templates.build_startup_summary(
+            bot_version="2.0.0",
+            environment=mode_str,
+            exchange=config.EXCHANGE_ID,
+            symbol=config.SYMBOL,
+            wallet_balance=initial_wallet.get("wallet_balance", 0.0),
+            risk_pct=config.RISK_PER_TRADE_PCT,
+            strategy="Quantitative AI (Scalp/Daily)",
+            hostname=hostname
+        )
+        notifications.notify(startup_notif)
+
     except Exception as e:
         log.error(f"Failed to initialize exchange in thread: {e}")
         update_state(status="stopped", consecutive_errors=1, circuit_breaker_tripped=True)
+        notifications.notify(NotificationEvent(
+            event_type="bot_crashed",
+            category=EventCategory.BOT_LIFECYCLE,
+            level=NotificationLevel.CRITICAL,
+            title="Bot Startup Failed",
+            message=f"<b>🚨 BOT CRASHED ON INITIALIZATION:</b> {e}",
+            details={"error": str(e)}
+        ))
         return
-    
+
     max_errors = config.MAX_CONSECUTIVE_API_ERRORS
     consecutive_errors = 0
     
+    last_heartbeat_time = time.time()
+    last_daily_time = time.time()
+
     while not stop_event.is_set():
         try:
             auto_trade = get_state().get("auto_trade_enabled", True)
             # We pass _state_callback so run_once can report live price and signals
             open_position = run_once(exchange, open_position, state_callback=_state_callback, auto_trade_enabled=auto_trade)
-            
+
             # Update position in global state
             update_state(position=open_position, consecutive_errors=0, circuit_breaker_tripped=False)
             consecutive_errors = 0  # reset on success
-            
+
+            # Heartbeat check (every 6 hours)
+            now = time.time()
+            if now - last_heartbeat_time >= 21600:
+                last_heartbeat_time = now
+                current_price = get_state().get("price", 0.0)
+                wallet_info = get_state().get("wallet", {})
+                hb_notif = templates.build_heartbeat(
+                    status="running",
+                    wallet_balance=wallet_info.get("wallet_balance", 0.0),
+                    current_price=current_price,
+                    open_positions=1 if open_position else 0,
+                    cpu_pct=0.0,
+                    mem_pct=0.0,
+                    api_latency_ms=0,
+                    queue_len=0,
+                    last_notif_time=""
+                )
+                notifications.notify(hb_notif)
+
         except Exception as e:
             consecutive_errors += 1
             log.error(f"Error in controller loop ({consecutive_errors}/{max_errors}): {e}")
@@ -153,10 +205,15 @@ def _bot_loop():
                     consecutive_errors=consecutive_errors,
                     circuit_breaker_tripped=True
                 )
+                cb_notif = templates.build_circuit_breaker(
+                    reason=f"Exceeded {max_errors} consecutive API errors: {e}",
+                    errors_count=consecutive_errors
+                )
+                notifications.notify(cb_notif)
                 break
             else:
                 update_state(consecutive_errors=consecutive_errors)
-                
+
         # Sleep incrementally so we can break out quickly if stop_event is set
         for _ in range(config.POLL_INTERVAL_SECONDS):
             if stop_event.is_set():
@@ -164,6 +221,15 @@ def _bot_loop():
             time.sleep(1)
 
     update_state(status="stopped", uptime_seconds=0)
+    notifications.notify(NotificationEvent(
+        event_type="bot_stopped",
+        category=EventCategory.BOT_LIFECYCLE,
+        level=NotificationLevel.WARNING,
+        title="Bot Engine Stopped",
+        message="<b>🛑 NSFLUX Trading Engine Stopped</b>",
+        details={"status": "stopped"}
+    ))
+
 
 def set_auto_trade(enabled):
     with state_lock:

@@ -33,10 +33,11 @@ log = logging.getLogger("btc_trader")
 
 def check_position_exit(exchange, open_position, current_price):
     """
-    Check if the position is closed. In DRY_RUN, simulates via price.
-    In LIVE, queries the exchange for actual position state.
+    Check if the position is closed. In DRY_RUN or phantom mode, simulates via price.
+    In LIVE, queries exchange position contracts and uses fetch_my_trades with VWAP
+    aggregation for actual execution prices.
     """
-    if config.DRY_RUN:
+    if config.DRY_RUN or open_position.get("is_phantom"):
         side = open_position["side"]
         sl = open_position["stop_loss"]
         tp = open_position["take_profit"]
@@ -52,31 +53,70 @@ def check_position_exit(exchange, open_position, current_price):
         return None, None
     else:
         try:
-            positions = exchange.fetch_positions([config.SYMBOL])
+            positions = data_fetcher.retry_api_call(
+                lambda: exchange.fetch_positions([config.SYMBOL]),
+                func_name="fetch_positions"
+            )
+            is_closed = True
             for pos in positions:
-                if pos['symbol'] == config.SYMBOL:
-                    if pos['contracts'] == 0:
-                        # Position is closed
-                        is_win = (current_price > open_position["entry"] if open_position["side"] in ("BUY", "LONG") else current_price < open_position["entry"])
-                        outcome = "win" if is_win else "loss"
-                        # Estimate exit price based on outcome to keep journal clean
-                        exit_price = open_position["take_profit"] if outcome == "win" else open_position["stop_loss"]
-                        return outcome, exit_price
-                    else:
-                        return None, None
+                if pos['symbol'] == config.SYMBOL and float(pos.get('contracts', 0) or 0) > 0:
+                    is_closed = False
+                    break
+
+            if is_closed:
+                actual_exit_price = None
+                total_fees_usdt = 0.0
+                try:
+                    # Step A: Fetch trades since position entry time (ms)
+                    since_ms = open_position.get("entry_timestamp")
+                    recent_trades = data_fetcher.retry_api_call(
+                        lambda: exchange.fetch_my_trades(config.SYMBOL, since=since_ms, limit=20),
+                        func_name="fetch_my_trades"
+                    )
+                    
+                    target_exit_side = "sell" if open_position["side"] in ("BUY", "LONG") else "buy"
+                    
+                    # Step B: Filter for opposite side closing fills
+                    closing_fills = [
+                        t for t in recent_trades 
+                        if str(t.get("side", "")).lower() == target_exit_side
+                    ]
+
+                    # Step C: VWAP exit price & fee accumulation
+                    if closing_fills:
+                        total_cost = sum(t["price"] * t["amount"] for t in closing_fills)
+                        total_qty = sum(t["amount"] for t in closing_fills)
+                        if total_qty > 0:
+                            actual_exit_price = round(total_cost / total_qty, 2)
                         
-            # If no position object was returned for the symbol at all, it's closed
-            is_win = (current_price > open_position["entry"] if open_position["side"] in ("BUY", "LONG") else current_price < open_position["entry"])
-            outcome = "win" if is_win else "loss"
-            exit_price = open_position["take_profit"] if outcome == "win" else open_position["stop_loss"]
-            return outcome, exit_price
-            
+                        # Preserve fee info (converting fee currency if needed)
+                        for t in closing_fills:
+                            fee_info = t.get("fee", {})
+                            if fee_info and isinstance(fee_info.get("cost"), (int, float)):
+                                total_fees_usdt += float(fee_info["cost"])
+
+                except Exception as fetch_err:
+                    log.warning(f"Could not fetch execution fills from exchange: {fetch_err}")
+
+                # Step D: Fallback if no execution fills returned
+                if actual_exit_price is None:
+                    actual_exit_price = current_price
+
+                side = open_position["side"]
+                entry = open_position["entry"]
+                is_win = (actual_exit_price > entry) if side in ("BUY", "LONG") else (actual_exit_price < entry)
+                outcome = "win" if is_win else "loss"
+
+                return outcome, actual_exit_price
+
+            return None, None
+
         except Exception as e:
             log.error(f"Failed to check position exit state: {e}")
             return None, None
 
 
-def run_once(exchange, open_position, state_callback=None):
+def run_once(exchange, open_position, state_callback=None, auto_trade_enabled=True):
     df = data_fetcher.fetch_candles(exchange)
     current_price = df["close"].iloc[-1]
     
@@ -123,8 +163,10 @@ def run_once(exchange, open_position, state_callback=None):
         else:
             hypo_dir = "LONG" if bull_count >= bear_count else "SHORT"
             
+        wallet_info = None
         try:
-            balance = data_fetcher.get_account_balance(exchange, "USDT")
+            wallet_info = data_fetcher.get_wallet_info(exchange, "USDT")
+            balance = wallet_info["available_balance"]
             if config.TRADE_DERIVATIVES:
                 hypo_risk = risk_manager.calculate_derivative_position(
                     balance, signal["price"], signal["atr"], hypo_dir
@@ -147,14 +189,19 @@ def run_once(exchange, open_position, state_callback=None):
         ui_signal = "WAIT"
 
     if state_callback:
-        state_callback(
-            signal=ui_signal, 
-            confidence=signal["confidence"], 
-            reasons=signal.get("reasons", []),
-            bull_case=signal.get("bull_case", []),
-            bear_case=signal.get("bear_case", []),
-            hypothetical_risk=hypo_risk
-        )
+        cb_kwargs = {
+            "signal": ui_signal,
+            "raw_direction": signal.get("raw_action", "NEUTRAL"),
+            "confidence": signal["confidence"], 
+            "indicator_scores": signal.get("indicator_scores", {}),
+            "reasons": signal.get("reasons", []),
+            "bull_case": signal.get("bull_case", []),
+            "bear_case": signal.get("bear_case", []),
+            "hypothetical_risk": hypo_risk,
+        }
+        if wallet_info:
+            cb_kwargs["wallet"] = wallet_info
+        state_callback(**cb_kwargs)
         
     if open_position:
         return open_position
@@ -201,10 +248,39 @@ def run_once(exchange, open_position, state_callback=None):
         )
         return None
 
+    # Guard: Ensure stop loss is safe relative to liquidation price for derivative trades
+    if config.TRADE_DERIVATIVES and hypo_risk and hypo_risk.get("stop_is_safe") is False:
+        reason_msg = (
+            f"BLOCKED_UNSAFE_STOP: Stop loss ({stop_loss}) is unsafe relative to "
+            f"liquidation price ({hypo_risk.get('liquidation_price')}, lev={hypo_risk.get('leverage')}x)."
+        )
+        log.error(f"Execution aborted: {reason_msg}")
+        # Notification hook for future alerting systems (Telegram, Email, Sentry, PagerDuty, etc.)
+        # TODO: Send notification alert for critical risk event
+        log.warning(f"[NOTIFICATION_HOOK] ALERT: {reason_msg}")
+
+        signal.setdefault("reasons", []).append(reason_msg)
+        trade_journal.log_decision(
+            signal,
+            decision="STOP_NOT_SAFE",
+            exchange_id=config.EXCHANGE_ID,
+            symbol=config.SYMBOL,
+            risk_pct=config.RISK_PER_TRADE_PCT,
+            entry_price=signal["price"],
+            stop_loss=stop_loss,
+            take_profit=take_profit
+        )
+        return None
+
     trade_id = trade_journal.new_trade_id()
+
+    # Determine decision label based on auto_trade_enabled
+    decision_label = signal["action"] if auto_trade_enabled else "SIGNAL_ONLY"
+
+    # Exactly ONE journal entry is written per decision
     trade_journal.log_decision(
         signal,
-        decision=signal["action"],
+        decision=decision_label,
         exchange_id=config.EXCHANGE_ID,
         symbol=config.SYMBOL,
         risk_pct=config.RISK_PER_TRADE_PCT,
@@ -213,6 +289,28 @@ def run_once(exchange, open_position, state_callback=None):
         take_profit=take_profit,
         trade_id=trade_id,
     )
+
+    # Check Auto-Trade toggle before sending order
+    if not auto_trade_enabled:
+        log.info(
+            f"[AUTO-TRADE OFF] Signal={signal['action']} | Confidence={signal['confidence']}% | "
+            "Order placement skipped (SIGNAL_ONLY mode)."
+        )
+        # Create a phantom position so we track it (like paper trading)
+        # and avoid spamming the journal with SIGNAL_ONLY every 5 seconds.
+        now_ms = int(time.time() * 1000)
+        open_position = {
+            "trade_id": trade_id,
+            "side": signal["action"],
+            "amount": amount_btc,
+            "entry": signal["price"],
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+            "is_phantom": True,
+            "entry_timestamp": now_ms
+        }
+        state_manager.save_state(open_position)
+        return open_position
 
     if config.TRADE_DERIVATIVES:
         result = executor.place_order(
@@ -223,6 +321,7 @@ def run_once(exchange, open_position, state_callback=None):
         
     log.info(f"Order result: {result}")
 
+    now_ms = int(time.time() * 1000)
     open_position = {
         "trade_id": trade_id,
         "side": signal["action"],
@@ -230,6 +329,7 @@ def run_once(exchange, open_position, state_callback=None):
         "entry": signal["price"],
         "stop_loss": stop_loss,
         "take_profit": take_profit,
+        "entry_timestamp": now_ms
     }
     state_manager.save_state(open_position)
     return open_position
@@ -265,13 +365,16 @@ def main():
 
     exchange = data_fetcher.get_exchange()
     open_position = state_manager.load_state(exchange, config.SYMBOL)
-    
+    if open_position:
+        re_note = " (RE-HYDRATED FROM EXCHANGE)" if open_position.get("is_rehydrated") else ""
+        log.info(f"Resuming active position: {open_position['side']} {open_position['amount']} BTC @ ${open_position['entry']:.2f}{re_note}")
+
     consecutive_errors = 0
     MAX_CONSECUTIVE_ERRORS = 5
 
     while True:
         try:
-            open_position = run_once(exchange, open_position)
+            open_position = run_once(exchange, open_position, auto_trade_enabled=config.AUTO_TRADE_ENABLED)
             consecutive_errors = 0  # reset on success
         except Exception as e:
             consecutive_errors += 1

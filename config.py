@@ -40,8 +40,19 @@ CANDLE_LOOKBACK = 200       # how many candles to pull each cycle
 # Recommended path: USE_TESTNET=True, DRY_RUN=False for at least a week,
 # watch the results, THEN flip USE_TESTNET=False when you're ready for
 # real money.
-USE_TESTNET = True
+USE_DEMO_TRADING = os.environ.get("USE_DEMO_TRADING", "True").lower() in ("true", "1", "yes")
+USE_TESTNET = False
 DRY_RUN = False
+AUTO_TRADE_ENABLED = os.environ.get("AUTO_TRADE_ENABLED", "True").lower() in ("true", "1", "yes")
+
+# ── Dashboard Security ────────────────────────────────────────────────
+DASHBOARD_USERNAME = os.environ.get("DASHBOARD_USERNAME", "")
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
+DASHBOARD_AUTH_ENABLED = os.environ.get("DASHBOARD_AUTH_ENABLED", "True").lower() in ("true", "1", "yes")
+
+# ── Circuit Breaker & Error Resilience ───────────────────────────────
+MAX_CONSECUTIVE_API_ERRORS = int(os.environ.get("MAX_CONSECUTIVE_API_ERRORS", "5"))
+CIRCUIT_BREAKER_COOLDOWN_SEC = int(os.environ.get("CIRCUIT_BREAKER_COOLDOWN_SEC", "300"))
 
 # ── Risk management ──────────────────────────────────────────────────
 RISK_PER_TRADE_PCT = 1.0     # % of account balance risked per trade

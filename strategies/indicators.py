@@ -7,6 +7,8 @@ import ta
 def add_indicators(df):
     df["ema_fast"] = ta.trend.EMAIndicator(df["close"], window=9).ema_indicator()
     df["ema_slow"] = ta.trend.EMAIndicator(df["close"], window=21).ema_indicator()
+    df["ema_50"] = ta.trend.EMAIndicator(df["close"], window=50).ema_indicator()
+    df["ema_200"] = ta.trend.EMAIndicator(df["close"], window=200).ema_indicator()
     df["rsi"] = ta.momentum.RSIIndicator(df["close"], window=14).rsi()
     macd = ta.trend.MACD(df["close"])
     df["macd"] = macd.macd()

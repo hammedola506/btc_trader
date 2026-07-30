@@ -21,11 +21,13 @@ def calculate_position_size(balance_usdt, entry_price, atr):
     position_size_btc = risk_amount / stop_distance
     position_value_usdt = position_size_btc * entry_price
 
-    # Never risk more than the account actually has
-    position_value_usdt = min(position_value_usdt, balance_usdt)
-    position_size_btc = position_value_usdt / entry_price
+    # Minimum lot size on Bybit for BTC/USDT perpetuals is 0.001 BTC
+    MIN_LOT_SIZE_BTC = 0.001
+    final_size = round(position_size_btc, 6)
+    if final_size < MIN_LOT_SIZE_BTC:
+        return 0
 
-    return round(position_size_btc, 6)
+    return final_size
 
 
 def calculate_stop_and_target(entry_price, atr, direction):
@@ -145,8 +147,13 @@ def calculate_derivative_position(balance_usdt, entry_price, atr, direction, lev
     else:
         raise ValueError(f"Unrecognized direction in calculate_derivative_position: {direction}")
 
+    MIN_LOT_SIZE_BTC = 0.001
+    final_size = round(position_size_btc, 6)
+    if final_size < MIN_LOT_SIZE_BTC:
+        return None
+
     return {
-        "position_size_btc": round(position_size_btc, 6),
+        "position_size_btc": final_size,
         "position_value_usdt": round(position_value_usdt, 2),
         "leverage": leverage,
         "margin_required_usdt": round(margin_required, 2),

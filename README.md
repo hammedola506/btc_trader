@@ -57,10 +57,21 @@ cp .env.example .env
 ```
 
 Open `.env` and add your real Bybit API key/secret (this file is
-gitignored and will never be committed). Then in `config.py`:
+gitignored and will never be committed). Then in `config.py` or `.env`:
 - Keep `DRY_RUN = True` while you test
+- Set `AUTO_TRADE_ENABLED=True` (or `False` for safe observation/signal-only mode without executing orders)
 - Adjust `RISK_PER_TRADE_PCT`, `MIN_CONFIDENCE_TO_TRADE`, and `TIMEFRAME`
   to your preference
+
+### Environment Configuration & Google Cloud Deployment
+You can set safety switches via environment variables in `.env` or container environment settings (e.g. Google Cloud Run / Compute Engine):
+```env
+EXCHANGE_API_KEY=your_key
+EXCHANGE_API_SECRET=your_secret
+AUTO_TRADE_ENABLED=False   # Set False on Google Cloud for safe observation mode (SIGNAL_ONLY)
+```
+- When `AUTO_TRADE_ENABLED=False`, the trading loop evaluates market setups and records decisions into the trade journal as `SIGNAL_ONLY` without placing orders on Bybit.
+- When running the web dashboard, `AUTO_TRADE_ENABLED` sets the default startup state, which can also be toggled dynamically via the dashboard UI.
 
 ## Run
 

@@ -4,7 +4,7 @@ import logging
 
 logging.basicConfig(level=logging.ERROR)
 
-from strategies import strategy_test as strat
+from strategies import strategy as strat
 
 # Load historical data to test against
 df = pd.read_csv("historical_data.csv")

@@ -413,9 +413,34 @@ def evaluate(df):
         "trend_direction": "up" if last.get("ema_fast", 0) > last.get("ema_slow", 0) else "down",
     }
 
+    raw_action = "LONG" if net_score > 0 else "SHORT" if net_score < 0 else "NEUTRAL"
+    ema_score = 0
+    if raw_action == "LONG":
+        if any("crossed above" in item.lower() for item in bull_case):
+            ema_score = 20
+        elif any("price trend is up" in item.lower() for item in bull_case):
+            ema_score = 10
+    elif raw_action == "SHORT":
+        if any("crossed below" in item.lower() for item in bear_case):
+            ema_score = 20
+        elif any("price trend is down" in item.lower() for item in bear_case):
+            ema_score = 10
+
+    indicator_scores = {
+        "ema_trend": ema_score,
+        "rsi_momentum": 15 if "rsi" in " ".join(reasons).lower() else 0,
+        "macd": 15 if "macd" in " ".join(reasons).lower() else 0,
+        "adx": 10 if "adx" in " ".join(reasons).lower() else 0,
+        "support_resistance": 15 if "support" in " ".join(reasons).lower() or "resistance" in " ".join(reasons).lower() else 0,
+        "fibonacci": 15 if "fibonacci" in " ".join(reasons).lower() else 0,
+        "candlestick": 10 if detected else 0,
+    }
+
     return {
         "action": action,
+        "raw_action": raw_action,
         "confidence": confidence,
+        "indicator_scores": indicator_scores,
         "reasons": reasons,
         "bull_case": bull_case,
         "bear_case": bear_case,

@@ -27,7 +27,7 @@ class TestAuthenticationSubsystem(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIn(b"NSFLUX Trading Platform", res.data)
         self.assertIn(b"AUTHORIZED PERSONNEL ONLY", res.data)
-        self.assertIn(b"LOGIN TO NSFLUX", res.data)
+        self.assertIn(b"ACCESS DASHBOARD", res.data)
 
     def test_unauthenticated_dashboard_redirects(self):
         """Verify GET / redirects unauthenticated browser requests to /login."""

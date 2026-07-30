@@ -125,6 +125,21 @@
             filter: blur(40px);
         }
 
+        @keyframes binance-glow {
+            0%, 100% { opacity: 0.12; transform: scale(1); }
+            50% { opacity: 0.28; transform: scale(1.06); }
+        }
+
+        .slow-card-glow {
+            position: absolute;
+            inset: -30px;
+            background: radial-gradient(circle, rgba(249, 115, 22, 0.15) 0%, rgba(37, 99, 235, 0.08) 50%, transparent 70%);
+            filter: blur(50px);
+            z-index: 0;
+            animation: binance-glow 14s ease-in-out infinite;
+            pointer-events: none;
+        }
+
         .input-focus-effect:focus-within {
             box-shadow: 0 0 0 1px #2563EB;
         }
@@ -194,8 +209,11 @@
         </div>
 
         <!-- Central Login Card -->
-        <div class="lg:col-span-6 flex flex-col items-center">
-            <div class="w-full max-w-[480px] bg-surface-container-low rounded-xl glass-stroke shadow-2xl p-8 lg:p-10 relative overflow-hidden border-surface-bright">
+        <div class="lg:col-span-6 flex flex-col items-center relative">
+            <!-- Binance-style Slow Subtle Ambient Glow -->
+            <div class="slow-card-glow"></div>
+
+            <div class="w-full max-w-[480px] bg-surface-container-low rounded-xl glass-stroke shadow-2xl p-8 lg:p-10 relative overflow-hidden border-surface-bright z-10">
                 <!-- Subtle Header Decoration -->
                 <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
                 
@@ -204,8 +222,10 @@
                     <img alt="NSFLUX Logo" class="w-16 h-16 mb-4 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD31UGEWfARZ6S-t2kmLEiDwMubeDT5M-ooaye2yd38BK48-pFKS8qEg_xaVrEygc8pU-bzekqvkcJjkzJkyA1J21vN8MkrKGpI802OCTl2zIqGC6JgTpM-UavA46avRtM5G5EuySStK2SBasT822fkCYXmE_hM-FH_MFpLKky-9egCLEJeDW0e3c0wzxSGjR7mVGkSFuoD6D4TDoXnBVLJ-NB0kA0MXxwLDhyb3AX1cxQTdKvxI6VyxQ"/>
                     <h1 class="font-headline-md text-headline-md text-primary tracking-tight mb-1">NSFLUX</h1>
                     <h2 class="font-headline-sm text-[16px] font-semibold text-on-surface mb-1">NSFLUX Trading Platform</h2>
-                    <p class="font-label-caps text-label-caps text-on-surface-variant opacity-80 mb-1">Professional AI-Powered Trading Dashboard</p>
-                    <p class="font-body-md text-body-md italic text-primary/70">No Stress. Just Progress Trade.</p>
+                    <p class="font-label-caps text-label-caps text-on-surface-variant opacity-80 mb-2">Professional AI-Powered Trading Dashboard</p>
+                    <p class="font-body-md text-xs italic text-[#F97316] font-medium leading-relaxed">
+                        No Stress.<br/>Just Progress Trade.
+                    </p>
                 </div>
 
                 <!-- Welcome Header -->
@@ -250,14 +270,14 @@
 
                     <!-- Institutional Compliance Notice -->
                     <div class="p-3 bg-surface-container-highest/30 rounded-lg border border-white/5 text-center cursor-default">
-                        <p class="font-label-caps text-[10px] text-amber-500/80 font-bold tracking-wider mb-0.5">AUTHORIZED PERSONNEL ONLY</p>
+                        <p class="font-label-caps text-[10px] text-[#F97316] font-bold tracking-wider mb-0.5">AUTHORIZED PERSONNEL ONLY</p>
                         <p class="font-body-md text-[11px] text-on-surface-variant/60 leading-tight">Secure access to the NSFLUX Trading Platform. All authentication attempts are monitored and logged.</p>
                     </div>
 
                     <!-- Login Submit Button -->
                     <button id="submit-btn" type="submit" class="w-full h-[52px] bg-gradient-to-r from-[#2563EB] to-[#3B82F6] text-white font-headline-sm text-headline-sm rounded-lg hover:brightness-110 active:scale-[0.98] transition-all shadow-lg shadow-blue-900/20 uppercase tracking-wide flex items-center justify-center gap-2">
-                        <span id="btn-text">LOGIN TO NSFLUX</span>
-                        <span id="btn-spinner" class="hidden material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                        <span id="btn-text">ACCESS DASHBOARD</span>
+                        <span id="btn-spinner" class="hidden material-symbols-outlined animate-spin text-[20px] text-[#F97316]">progress_activity</span>
                     </button>
                 </form>
 
@@ -312,11 +332,11 @@
     <div class="max-w-2xl mx-auto flex flex-col md:flex-row items-center justify-center gap-2 text-on-surface-variant opacity-60 font-label-caps text-[11px] tracking-wider">
         <span>NSFLUX Trading Platform</span>
         <span class="hidden md:inline text-white/20">•</span>
-        <span>Version 1.0.0</span>
+        <span>v1.0.0</span>
         <span class="hidden md:inline text-white/20">•</span>
         <span>AI-Assisted Quantitative Trading System</span>
         <span class="hidden md:inline text-white/20">•</span>
-        <span>© 2026 No Stress Tech</span>
+        <span>© 2026 No Stress Edge</span>
     </div>
 </footer>
 
@@ -381,7 +401,7 @@
                 errorMessage.textContent = data.message || 'Invalid username or password. Please try again.';
                 errorBanner.classList.remove('hidden');
                 submitBtn.disabled = false;
-                btnText.textContent = 'LOGIN TO NSFLUX';
+                btnText.textContent = 'ACCESS DASHBOARD';
                 btnSpinner.classList.add('hidden');
             }
         } catch (err) {
@@ -389,7 +409,7 @@
             errorMessage.textContent = 'Network or server connection error. Please try again.';
             errorBanner.classList.remove('hidden');
             submitBtn.disabled = false;
-            btnText.textContent = 'LOGIN TO NSFLUX';
+            btnText.textContent = 'ACCESS DASHBOARD';
             btnSpinner.classList.add('hidden');
         }
     }

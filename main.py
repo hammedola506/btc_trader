@@ -169,10 +169,12 @@ def run_once(exchange, open_position, state_callback=None, auto_trade_enabled=Tr
             balance = wallet_info["available_balance"]
             if config.TRADE_DERIVATIVES:
                 hypo_risk = risk_manager.calculate_derivative_position(
-                    balance, signal["price"], signal["atr"], hypo_dir
+                    balance, signal["price"], signal["atr"], hypo_dir, confidence=signal.get("confidence")
                 )
             else:
-                amt = risk_manager.calculate_position_size(balance, signal["price"], signal["atr"])
+                amt = risk_manager.calculate_position_size(
+                    balance, signal["price"], signal["atr"], confidence=signal.get("confidence")
+                )
                 sl, tp = risk_manager.calculate_stop_and_target(signal["price"], signal["atr"], hypo_dir)
                 hypo_risk = {
                     "position_size_btc": amt,

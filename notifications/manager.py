@@ -86,7 +86,8 @@ class NotificationManager:
         now = time.time()
         with self._dedup_lock:
             last_sent = self._dedup_cache.get(event.dedup_key, 0)
-            if now - last_sent < self.dedup_cooldown_sec:
+            cooldown = event.cooldown_sec if event.cooldown_sec is not None else self.dedup_cooldown_sec
+            if now - last_sent < cooldown:
                 log.debug(f"Event [{event.notification_id}] suppressed as duplicate (dedup_key={event.dedup_key})")
                 return False
             self._dedup_cache[event.dedup_key] = now

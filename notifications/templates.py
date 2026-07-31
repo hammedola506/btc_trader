@@ -233,3 +233,101 @@ def build_circuit_breaker(reason: str, errors_count: int) -> NotificationEvent:
         message=msg,
         details={"reason": reason, "errors_count": errors_count}
     )
+
+
+def build_trade_skipped_lot_size(
+    calculated_size_btc: float,
+    min_lot_size_btc: float,
+    risk_pct: float,
+    balance_usdt: float,
+    confidence: Optional[float] = None
+) -> NotificationEvent:
+    conf_str = f"{confidence:.0f}%" if confidence is not None else "N/A"
+    risk_str = f"{int(risk_pct) if risk_pct == int(risk_pct) else risk_pct}%"
+    size_str = f"{calculated_size_btc:.5f}".rstrip('0').rstrip('.')
+
+    msg = (
+        f"⚠️ <b>Trade Skipped</b>\n\n"
+        f"<b>Reason:</b> Calculated position size ({size_str} BTC) is below Bybit's minimum ({min_lot_size_btc} BTC)\n"
+        f"<b>Risk policy:</b> Rounding up would exceed the configured {risk_str} risk per trade\n"
+        f"<b>Action:</b> Trade skipped — no order placed\n"
+        f"<b>Current balance:</b> ${balance_usdt:,.2f} | <b>Confidence was:</b> {conf_str}"
+    )
+    return NotificationEvent(
+        event_type="trade_skipped_lot_size",
+        category=EventCategory.RISK,
+        level=NotificationLevel.WARNING,
+        title="Trade Skipped — Lot Size Below Minimum",
+        message=msg,
+        details={
+            "calculated_size_btc": calculated_size_btc,
+            "min_lot_size_btc": min_lot_size_btc,
+            "risk_pct": risk_pct,
+            "balance_usdt": balance_usdt,
+            "confidence": confidence,
+        },
+        dedup_key="RISK:trade_skipped_lot_size",
+        cooldown_sec=3600
+    )
+
+
+def build_exchange_disconnected(
+    error_type: str,
+    error_msg: str,
+    consecutive_failures: int,
+    exchange_name: str = "BYBIT"
+) -> NotificationEvent:
+    msg = (
+        f"📡 <b>Exchange Connection Lost</b>\n\n"
+        f"<b>Exchange:</b> {exchange_name.upper()}\n"
+        f"<b>Error type:</b> {error_type}\n"
+        f"<b>Details:</b> {error_msg}\n"
+        f"<b>Consecutive failures:</b> {consecutive_failures}\n"
+        f"<b>Action:</b> Retrying automatically with exponential backoff..."
+    )
+    return NotificationEvent(
+        event_type="exchange_disconnected",
+        category=EventCategory.SYSTEM,
+        level=NotificationLevel.WARNING,
+        title="Exchange Connection Lost",
+        message=msg,
+        details={
+            "error_type": error_type,
+            "error_msg": error_msg,
+            "consecutive_failures": consecutive_failures,
+            "exchange": exchange_name
+        },
+        dedup_key="SYSTEM:exchange_disconnected",
+        cooldown_sec=300
+    )
+
+
+def build_exchange_reconnected(
+    downtime_sec: float,
+    recovered_function: str = "API Call",
+    exchange_name: str = "BYBIT"
+) -> NotificationEvent:
+    downtime_str = f"{downtime_sec:.1f}s" if downtime_sec < 60 else f"{downtime_sec / 60:.1f}m"
+    msg = (
+        f"✅ <b>Exchange Connection Restored</b>\n\n"
+        f"<b>Exchange:</b> {exchange_name.upper()}\n"
+        f"<b>Status:</b> API operational\n"
+        f"<b>Downtime:</b> {downtime_str}\n"
+        f"<b>Recovered call:</b> {recovered_function}"
+    )
+    return NotificationEvent(
+        event_type="exchange_reconnected",
+        category=EventCategory.SYSTEM,
+        level=NotificationLevel.INFO,
+        title="Exchange Connection Restored",
+        message=msg,
+        details={
+            "downtime_sec": downtime_sec,
+            "recovered_function": recovered_function,
+            "exchange": exchange_name
+        },
+        dedup_key="SYSTEM:exchange_reconnected",
+        cooldown_sec=60
+    )
+
+

@@ -4,7 +4,7 @@ Notification Events and Enums for NSFLUX Trading Bot.
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 import uuid
 
 import itertools
@@ -50,6 +50,7 @@ class NotificationEvent:
     notification_id: str = field(default_factory=generate_notification_id)
     timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     dedup_key: str = field(default="")
+    cooldown_sec: Optional[int] = field(default=None)
 
     def __post_init__(self):
         if not self.dedup_key:

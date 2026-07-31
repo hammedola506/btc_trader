@@ -2,10 +2,51 @@
 Risk management: figures out how much to trade and where to place
 stop-loss / take-profit levels, based on account balance and volatility (ATR).
 """
+import logging
+import time
+from typing import Optional
 import config
+from notifications import notify
+from notifications.templates import build_trade_skipped_lot_size
+
+log = logging.getLogger("btc_trader.risk_manager")
+
+_last_lot_size_skip_time = 0
+_LOT_SIZE_SKIP_COOLDOWN_SEC = 3600  # 1 hour suppression window
 
 
-def calculate_position_size(balance_usdt, entry_price, atr):
+def reset_lot_size_skip_cooldown():
+    """Reset lot size skip cooldown timestamp (primarily for testing)."""
+    global _last_lot_size_skip_time
+    _last_lot_size_skip_time = 0
+
+
+def _notify_lot_size_skipped(
+    calculated_size_btc: float,
+    min_lot_size_btc: float,
+    balance_usdt: float,
+    confidence: Optional[float] = None
+):
+    global _last_lot_size_skip_time
+    now = time.time()
+    if now - _last_lot_size_skip_time < _LOT_SIZE_SKIP_COOLDOWN_SEC:
+        log.debug(f"Lot size skip notification suppressed by cooldown (last sent {now - _last_lot_size_skip_time:.1f}s ago).")
+        return
+    _last_lot_size_skip_time = now
+    try:
+        event = build_trade_skipped_lot_size(
+            calculated_size_btc=calculated_size_btc,
+            min_lot_size_btc=min_lot_size_btc,
+            risk_pct=config.RISK_PER_TRADE_PCT,
+            balance_usdt=balance_usdt,
+            confidence=confidence
+        )
+        notify(event)
+    except Exception as e:
+        log.error(f"Failed to dispatch trade skipped notification: {e}")
+
+
+def calculate_position_size(balance_usdt, entry_price, atr, confidence=None):
     """
     Risk a fixed % of account balance per trade. Position size is derived
     from how far away the stop-loss is (in ATR terms), so bigger stops
@@ -25,6 +66,7 @@ def calculate_position_size(balance_usdt, entry_price, atr):
     MIN_LOT_SIZE_BTC = 0.001
     final_size = round(position_size_btc, 6)
     if final_size < MIN_LOT_SIZE_BTC:
+        _notify_lot_size_skipped(position_size_btc, MIN_LOT_SIZE_BTC, balance_usdt, confidence)
         return 0
 
     return final_size
@@ -90,7 +132,7 @@ def calculate_liquidation_price(entry_price, leverage, direction, maintenance_ma
     return round(liquidation_price, 2)
 
 
-def calculate_derivative_position(balance_usdt, entry_price, atr, direction, leverage=None):
+def calculate_derivative_position(balance_usdt, entry_price, atr, direction, leverage=None, confidence=None):
     """
     Full derivatives position sizing: how much to trade, how much margin
     it requires, and where liquidation sits - all based on risking a fixed
@@ -150,6 +192,7 @@ def calculate_derivative_position(balance_usdt, entry_price, atr, direction, lev
     MIN_LOT_SIZE_BTC = 0.001
     final_size = round(position_size_btc, 6)
     if final_size < MIN_LOT_SIZE_BTC:
+        _notify_lot_size_skipped(position_size_btc, MIN_LOT_SIZE_BTC, balance_usdt, confidence)
         return None
 
     return {
@@ -163,3 +206,4 @@ def calculate_derivative_position(balance_usdt, entry_price, atr, direction, lev
         "distance_to_liquidation_pct": round(distance_to_liq_pct, 2),
         "stop_is_safe": stop_is_safe,
     }
+

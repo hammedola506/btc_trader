@@ -160,6 +160,12 @@ class TestNotificationSubsystem(unittest.TestCase):
         cb = templates.build_circuit_breaker("Too many API errors", 5)
         self.assertEqual(cb.level, NotificationLevel.CRITICAL)
 
+        sk = templates.build_trade_skipped_lot_size(0.00081, 0.001, 1.0, 50.0, 85)
+        self.assertEqual(sk.event_type, "trade_skipped_lot_size")
+        self.assertEqual(sk.cooldown_sec, 3600)
+        self.assertIn("below Bybit's minimum", sk.message)
+        self.assertIn("0.00081 BTC", sk.message)
+
     def test_dashboard_api_endpoints(self):
         """Verify /api/notifications/history and /api/notifications/stats endpoints."""
         client = app.test_client()

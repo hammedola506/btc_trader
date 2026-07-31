@@ -7,11 +7,26 @@ import config
 log = logging.getLogger("data_fetcher")
 
 
+_is_disconnected = False
+_disconnected_since = 0.0
+_consecutive_api_failures = 0
+_DISCONNECT_NOTIFY_THRESHOLD = 2  # Trigger notification after 2 consecutive failures
+
+
+def reset_connection_state():
+    """Reset connection tracking state (primarily for testing)."""
+    global _is_disconnected, _disconnected_since, _consecutive_api_failures
+    _is_disconnected = False
+    _disconnected_since = 0.0
+    _consecutive_api_failures = 0
+
+
 def retry_api_call(fn, func_name="API Call", max_retries=3, initial_delay=1.0):
     """
     Wrap an exchange API call with exponential backoff for transient CCXT network errors
     (NetworkError, RequestTimeout, RateLimitExceeded, DDoSProtection).
     """
+    global _is_disconnected, _disconnected_since, _consecutive_api_failures
     delay = initial_delay
     transient_errors = (
         ccxt.NetworkError,
@@ -22,10 +37,47 @@ def retry_api_call(fn, func_name="API Call", max_retries=3, initial_delay=1.0):
     start_t = time.time()
     for attempt in range(1, max_retries + 1):
         try:
-            return fn()
+            res = fn()
+            # Recovered from network disruption
+            if _is_disconnected:
+                downtime = time.time() - _disconnected_since
+                _is_disconnected = False
+                _consecutive_api_failures = 0
+                try:
+                    import notifications
+                    from notifications.templates import build_exchange_reconnected
+                    event = build_exchange_reconnected(
+                        downtime_sec=downtime,
+                        recovered_function=func_name,
+                        exchange_name=getattr(config, "EXCHANGE_ID", "BYBIT")
+                    )
+                    notifications.notify(event)
+                except Exception as ne:
+                    log.error(f"Failed to dispatch exchange reconnected notification: {ne}")
+            else:
+                _consecutive_api_failures = 0
+            return res
         except transient_errors as e:
             elapsed = time.time() - start_t
             exc_class = e.__class__.__name__
+            _consecutive_api_failures += 1
+
+            if _consecutive_api_failures >= _DISCONNECT_NOTIFY_THRESHOLD and not _is_disconnected:
+                _is_disconnected = True
+                _disconnected_since = time.time()
+                try:
+                    import notifications
+                    from notifications.templates import build_exchange_disconnected
+                    event = build_exchange_disconnected(
+                        error_type=exc_class,
+                        error_msg=str(e),
+                        consecutive_failures=_consecutive_api_failures,
+                        exchange_name=getattr(config, "EXCHANGE_ID", "BYBIT")
+                    )
+                    notifications.notify(event)
+                except Exception as ne:
+                    log.error(f"Failed to dispatch exchange disconnected notification: {ne}")
+
             if attempt == max_retries:
                 log.error(
                     f"[{func_name} FAILED] Final attempt {attempt}/{max_retries} failed after {elapsed:.2f}s | "

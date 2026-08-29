@@ -40,9 +40,9 @@ CANDLE_LOOKBACK = 200       # how many candles to pull each cycle
 # Recommended path: USE_TESTNET=True, DRY_RUN=False for at least a week,
 # watch the results, THEN flip USE_TESTNET=False when you're ready for
 # real money.
-USE_DEMO_TRADING = os.environ.get("USE_DEMO_TRADING", "True").lower() in ("true", "1", "yes")
-USE_TESTNET = False
-DRY_RUN = False
+USE_DEMO_TRADING = os.environ.get("USE_DEMO_TRADING", "False").lower() in ("true", "1", "yes")
+USE_TESTNET = os.environ.get("USE_TESTNET", "True").lower() in ("true", "1", "yes")
+DRY_RUN = os.environ.get("DRY_RUN", "False").lower() in ("true", "1", "yes")
 AUTO_TRADE_ENABLED = os.environ.get("AUTO_TRADE_ENABLED", "True").lower() in ("true", "1", "yes")
 
 # ── Dashboard Security ────────────────────────────────────────────────

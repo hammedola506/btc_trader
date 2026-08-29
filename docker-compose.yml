@@ -1,0 +1,92 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NSFLUX – docker-compose.yml
+#
+# Intended use: LOCAL DEVELOPMENT & VERIFICATION ONLY.
+# Production deployments target Google Cloud Run or Compute Engine and
+# do NOT use docker-compose.
+#
+# Usage:
+#   docker-compose up --build          # Build and start
+#   docker-compose up -d               # Detached mode
+#   docker-compose logs -f nsflux      # Follow logs
+#   docker-compose exec nsflux sh      # Open shell (for debugging)
+#   docker-compose down                # Stop and remove containers
+#
+# Persistence:
+#   ./logs is mounted to /app/logs inside the container so that:
+#     - trade_journal.db  persists between restarts
+#     - bot_state.json    survives container recreation
+#     - trading_bot.log   is readable on the host for debugging
+# ─────────────────────────────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+  nsflux:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime          # Explicit: use the production runtime stage only
+
+    image: nsflux-bot:latest
+
+    container_name: nsflux_bot
+
+    # Load secrets and configuration from the local .env file.
+    # The .dockerignore excludes .env from the image context – this env_file
+    # directive only injects variables into the running container at runtime.
+    env_file:
+      - .env
+
+    # Explicit environment overrides – applied on top of env_file.
+    # PORT=5000 is the default; Cloud Run will override this at runtime.
+    environment:
+      - PORT=5000
+
+    # Map host port 5000 → container port 5000.
+    # Change the left side if port 5000 is already in use on your machine.
+    ports:
+      - "5000:5000"
+
+    # ── Persistent volume ─────────────────────────────────────────────────────
+    # Mounts the local ./logs directory into the container so that the SQLite
+    # journal database, bot state files, and application logs survive restarts.
+    # The directory is created automatically by Docker if it doesn't exist.
+    volumes:
+      - ./logs:/app/logs
+
+    # ── Restart policy ────────────────────────────────────────────────────────
+    # "unless-stopped" ensures the container restarts after crashes or host
+    # reboots, but respects a deliberate `docker-compose down`.
+    restart: unless-stopped
+
+    # ── Health check ─────────────────────────────────────────────────────────
+    # Mirrors the HEALTHCHECK in the Dockerfile so docker-compose reports
+    # container health status correctly.
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+
+    # ── Logging ───────────────────────────────────────────────────────────────
+    # json-file driver with rotation keeps local logs manageable.
+    # In production (Cloud Run / GCE), logs are shipped via the GCP logging
+    # agent and this driver configuration is irrelevant.
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+    # ── Resource limits ───────────────────────────────────────────────────────
+    # Soft limits for local development; adjust for production VM sizing.
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M

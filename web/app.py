@@ -327,6 +327,11 @@ def notifications_stats():
     return jsonify(notifications.get_statistics())
 
 if __name__ == "__main__":
+    if os.environ.get("AUTO_START_BOT", "false").lower() in ("true", "1", "yes"):
+        log.info("AUTO_START_BOT is enabled. Launching trading bot engine thread...")
+        start_bot()
 
-    # Localhost binding is the correct default security posture
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    host = os.environ.get("HOST", "0.0.0.0")
+    port = int(os.environ.get("PORT", 5000))
+    log.info(f"Starting NSLUX Web Dashboard on http://{host}:{port}")
+    app.run(host=host, port=port, debug=False)

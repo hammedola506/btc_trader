@@ -1,0 +1,79 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NSFLUX – .dockerignore
+#
+# Prevents the following from being sent to the Docker build context:
+#  • Secrets and environment configuration
+#  • Local virtual environment (rebuilt inside Docker by the builder stage)
+#  • Python bytecode caches
+#  • Large data/log files that don't belong in the image
+#  • Developer tooling and test artefacts
+#  • Version control metadata
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Secrets & environment ─────────────────────────────────────────────────────
+.env
+.env.*
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+.github
+
+# ── Local virtual environment ─────────────────────────────────────────────────
+# The Dockerfile builder stage creates its own venv inside the image.
+venv/
+.venv/
+env/
+
+# ── Python runtime caches ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ── Test infrastructure & reports ─────────────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+*.egg-info/
+dist/
+build/
+htmlcov/
+
+# ── Runtime data & logs (will be mounted as volumes at runtime) ───────────────
+logs/
+
+# ── Large historical / backtest CSV data files ────────────────────────────────
+# These are only used during local development/backtesting and should
+# NOT be baked into the image.
+historical_data.csv
+historical_*.csv
+backtest_trades*.csv
+confidence_analysis.json
+
+# ── One-off developer scripts & utilities ────────────────────────────────────
+get-pip.py
+check_bybit.py
+check_orders.py
+audit_trades.py
+diagnostic.py
+analyze_confidence_inversion.py
+
+# ── Documentation & media ─────────────────────────────────────────────────────
+README.md
+docs/
+dashboard.png
+
+# ── IDE & OS artefacts ────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Docker files themselves (no need to copy into the image) ─────────────────
+Dockerfile
+.dockerignore
+docker-compose.yml

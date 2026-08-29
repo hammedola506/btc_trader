@@ -354,31 +354,52 @@
       </div>
     </div>
 
-    <!-- 6. System Health & Diagnostics Panel -->
-    <div class="lg:col-span-4 bg-[#151921] border border-[#2D3748] rounded-xl p-5 shadow-lg flex flex-col justify-between">
-      <div class="flex justify-between items-center border-b border-[#2D3748] pb-3 mb-4">
-        <h2 class="text-sm font-bold text-[#dfe2ee] tracking-wide uppercase flex items-center gap-2">
-          <span class="material-symbols-outlined text-[#EC4899] text-xl">notifications</span> Live Alert Feed
-        </h2>
-        <span id="notif-count-badge" class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#3B82F6]/20 text-[#3B82F6]">0 Alerts</span>
-      </div>
+    <!-- Right Column: System Diagnostics & Live Alerts -->
+    <div class="lg:col-span-4 flex flex-col gap-6">
+      <!-- System Health & Diagnostics Panel -->
+      <div class="bg-[#151921] border border-[#2D3748] rounded-xl p-5 shadow-lg flex flex-col justify-between">
+        <div class="flex justify-between items-center border-b border-[#2D3748] pb-3 mb-4">
+          <h2 class="text-sm font-bold text-[#dfe2ee] tracking-wide uppercase flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#22C55E] text-xl">health_and_safety</span> System Diagnostics
+          </h2>
+          <span id="diag-engine-status" class="mono font-bold text-[#22C55E]">STOPPED</span>
+        </div>
 
-      <div id="notif-feed-list" class="space-y-2 text-xs max-h-[350px] overflow-y-auto pr-1">
-        <div class="p-3 rounded bg-[#0B0E14] border border-[#2D3748] text-[#8892b0] italic text-center">
-          No notifications dispatched yet.
+        <div class="space-y-2 text-xs mb-4">
+          <div class="flex justify-between bg-[#0B0E14] p-2.5 rounded border border-[#2D3748]">
+            <span class="text-[#8892b0]">Circuit Breaker</span>
+            <span id="diag-circuit" class="mono font-bold text-[#22C55E]">NORMAL</span>
+          </div>
+          <div class="flex justify-between bg-[#0B0E14] p-2.5 rounded border border-[#2D3748]">
+            <span class="text-[#8892b0]">API Error Count</span>
+            <span id="diag-errors" class="mono font-bold text-[#dfe2ee]">0 / 5</span>
+          </div>
+          <div class="flex justify-between bg-[#0B0E14] p-2.5 rounded border border-[#2D3748]">
+            <span class="text-[#8892b0]">Next Scan Countdown</span>
+            <span id="diag-next-scan" class="mono font-bold text-[#3B82F6]">--s</span>
+          </div>
+        </div>
+
+        <div class="text-[11px] text-[#8892b0] bg-[#0B0E14]/60 p-2.5 rounded border border-[#2D3748]/50 flex justify-between">
+          <span>Uptime: <strong id="diag-uptime" class="mono text-[#dfe2ee]">0s</strong></span>
+          <span>Timeframe: <strong id="diag-style" class="mono text-[#dfe2ee]">daily</strong></span>
         </div>
       </div>
-    </div>
 
-        <div class="flex justify-between bg-[#0B0E14] p-2 rounded border border-[#2D3748]">
-          <span class="text-[#8892b0]">Next Scan Countdown</span>
-          <span id="diag-next-scan" class="mono font-bold text-[#3B82F6]">--s</span>
+      <!-- Live Alert Feed -->
+      <div class="bg-[#151921] border border-[#2D3748] rounded-xl p-5 shadow-lg flex flex-col justify-between">
+        <div class="flex justify-between items-center border-b border-[#2D3748] pb-3 mb-4">
+          <h2 class="text-sm font-bold text-[#dfe2ee] tracking-wide uppercase flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#EC4899] text-xl">notifications</span> Live Alert Feed
+          </h2>
+          <span id="notif-count-badge" class="px-2 py-0.5 rounded text-[11px] font-bold bg-[#3B82F6]/20 text-[#3B82F6]">0 Alerts</span>
         </div>
-      </div>
 
-      <div class="text-[11px] text-[#8892b0] bg-[#0B0E14]/60 p-2.5 rounded border border-[#2D3748]/50 flex justify-between">
-        <span>Uptime: <strong id="diag-uptime" class="mono text-[#dfe2ee]">0s</strong></span>
-        <span>Timeframe: <strong id="diag-style" class="mono text-[#dfe2ee]">daily</strong></span>
+        <div id="notif-feed-list" class="space-y-2 text-xs max-h-[220px] overflow-y-auto pr-1">
+          <div class="p-3 rounded bg-[#0B0E14] border border-[#2D3748] text-[#8892b0] italic text-center">
+            No notifications dispatched yet.
+          </div>
+        </div>
       </div>
     </div>
   </div>

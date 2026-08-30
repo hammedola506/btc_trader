@@ -127,7 +127,13 @@ def _bot_loop():
         exchange = data_fetcher.get_exchange()
         open_position = state_manager.load_state(exchange, config.SYMBOL)
         initial_wallet = data_fetcher.get_wallet_info(exchange, "USDT")
-        update_state(position=open_position, wallet=initial_wallet)
+        # Pre-warm ticker so dashboard shows real 24h stats immediately (not N/A)
+        try:
+            initial_ticker = data_fetcher.get_ticker_data(exchange, config.SYMBOL)
+            update_state(position=open_position, wallet=initial_wallet, ticker=initial_ticker, price=initial_ticker.get("last"))
+        except Exception as te:
+            log.warning(f"Could not pre-warm ticker on startup: {te}")
+            update_state(position=open_position, wallet=initial_wallet)
 
         # Dispatch Startup Notification
         hostname = socket.gethostname()

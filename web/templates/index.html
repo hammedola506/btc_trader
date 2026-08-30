@@ -33,57 +33,65 @@
     ::-webkit-scrollbar-thumb { background: #2D3748; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #424754; }
     .mono { font-family: 'JetBrains Mono', monospace; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-[#0B0E14] text-[#dfe2ee] min-h-screen flex flex-col antialiased">
 
 <!-- Nav -->
-<nav class="flex flex-wrap justify-between items-center h-auto min-h-[64px] py-2 px-6 w-full bg-[#0f131b] border-b border-[#2D3748] shrink-0 gap-4">
-  <div class="flex items-center gap-3">
-    <span class="text-xl font-bold text-[#adc6ff] tracking-tight">NoStressCapital</span>
-    <span id="mode-badge" class="bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/40 text-[10px] font-bold px-2 py-0.5 rounded">TESTNET</span>
-    <!-- Network Recovery Visualizer -->
-    <span id="net-badge" class="bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-      <span id="net-dot" class="w-1.5 h-1.5 rounded-full bg-[#22C55E]"></span>
-      <span id="net-text">Connected</span>
-    </span>
+<nav class="w-full bg-[#0f131b] border-b border-[#2D3748] shrink-0">
+  <!-- Top row: brand + status badges -->
+  <div class="flex items-center justify-between px-4 py-3">
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="text-base sm:text-xl font-bold text-[#adc6ff] tracking-tight truncate">NoStressCapital</span>
+      <span id="mode-badge" class="bg-[#F97316]/20 text-[#F97316] border border-[#F97316]/40 text-[10px] font-bold px-2 py-0.5 rounded shrink-0">TESTNET</span>
+      <span id="net-badge" class="hidden sm:flex bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-[10px] font-bold px-2 py-0.5 rounded items-center gap-1">
+        <span id="net-dot" class="w-1.5 h-1.5 rounded-full bg-[#22C55E]"></span>
+        <span id="net-text">Connected</span>
+      </span>
+    </div>
+    <!-- Mobile: show connection dot only -->
+    <span id="net-dot-mobile" class="sm:hidden w-2 h-2 rounded-full bg-[#22C55E]"></span>
   </div>
 
-  <div class="flex items-center gap-3 flex-wrap">
+  <!-- Bottom row: controls (scrollable on mobile) -->
+  <div class="flex items-center gap-2 px-4 pb-3 overflow-x-auto no-scrollbar">
     <!-- Style toggle -->
-    <div class="flex bg-[#0B0E14] border border-[#2D3748] rounded p-1">
+    <div class="flex bg-[#0B0E14] border border-[#2D3748] rounded p-1 shrink-0">
       <button id="btn-style-daily" onclick="setStyle('daily')"
-        class="px-3 py-1 text-xs font-bold bg-[#3B82F6] text-white rounded transition-colors">Daily</button>
+        class="px-3 py-1.5 text-xs font-bold bg-[#3B82F6] text-white rounded transition-colors">Daily</button>
       <button id="btn-style-weekly" onclick="setStyle('weekly')"
-        class="px-3 py-1 text-xs font-bold text-[#c2c6d6] hover:text-white transition-colors">Weekly</button>
+        class="px-3 py-1.5 text-xs font-bold text-[#c2c6d6] hover:text-white transition-colors">Weekly</button>
     </div>
-    <!-- Auto-Trade toggle switch -->
+    <!-- Auto-Trade -->
     <button id="btn-auto-trade" onclick="toggleAutoTrade()"
-      class="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold border transition-colors bg-[#22C55E]/10 border-[#22C55E] text-[#22C55E]">
+      class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-bold border transition-colors bg-[#22C55E]/10 border-[#22C55E] text-[#22C55E]">
       <span id="auto-trade-dot" class="w-2 h-2 rounded-full bg-[#22C55E]"></span>
-      <span id="auto-trade-text">Auto-Trade: ON</span>
+      <span id="auto-trade-text">Auto: ON</span>
     </button>
-    <!-- Bybit History Sync Button -->
-    <button onclick="syncBybitHistory()" title="Sync Bybit Testnet History"
-      class="bg-[#2D3748] text-xs font-bold px-3 py-1.5 rounded hover:bg-[#424754] text-white transition-colors flex items-center gap-1">
-      <span class="material-symbols-outlined text-sm">sync</span> Sync History
+    <!-- Sync -->
+    <button onclick="syncBybitHistory()" title="Sync History"
+      class="shrink-0 bg-[#2D3748] text-xs font-bold px-3 py-1.5 rounded hover:bg-[#424754] text-white transition-colors flex items-center gap-1">
+      <span class="material-symbols-outlined text-sm">sync</span>
+      <span class="hidden sm:inline">Sync History</span>
     </button>
-    <!-- Logout Button -->
-    <a href="/logout" title="Sign out of NSFLUX"
-      class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold px-3 py-1.5 rounded hover:bg-red-500/20 hover:text-red-300 transition-colors flex items-center gap-1">
-      <span class="material-symbols-outlined text-sm">logout</span> Logout
+    <!-- Logout -->
+    <a href="/logout" title="Logout"
+      class="shrink-0 bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold px-3 py-1.5 rounded hover:bg-red-500/20 transition-colors flex items-center gap-1">
+      <span class="material-symbols-outlined text-sm">logout</span>
+      <span class="hidden sm:inline">Logout</span>
     </a>
-
     <!-- Bot controls -->
     <button id="btn-start" onclick="controlBot('start')"
-      class="hidden bg-[#22C55E] text-[#0B0E14] text-xs font-bold px-4 py-1.5 rounded hover:opacity-90 transition-opacity">Start Bot</button>
+      class="hidden shrink-0 bg-[#22C55E] text-[#0B0E14] text-xs font-bold px-4 py-1.5 rounded hover:opacity-90">Start</button>
     <button id="btn-stop" onclick="controlBot('stop')"
-      class="bg-[#EF4444] text-white text-xs font-bold px-4 py-1.5 rounded hover:bg-red-600 transition-colors">Stop Bot</button>
+      class="shrink-0 bg-[#EF4444] text-white text-xs font-bold px-4 py-1.5 rounded hover:bg-red-600">Stop</button>
   </div>
 </nav>
 
 <!-- Main Container -->
-<main class="flex-1 p-6 space-y-6 max-w-[1600px] w-full mx-auto">
+<main class="flex-1 p-3 sm:p-6 space-y-4 sm:space-y-6 max-w-[1600px] w-full mx-auto">
 
   <!-- Row 1: Live Market & Wallet Cards -->
   <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -103,7 +111,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
         <div>
           <div class="text-xs text-[#8892b0] mb-1 font-medium">Mark Price (Live)</div>
           <div id="live-price" class="text-4xl font-bold mono text-[#dfe2ee] tracking-tight">$--.--</div>
@@ -144,14 +152,14 @@
         <span class="text-xs text-[#8892b0]">USDT Account</span>
       </div>
 
-      <div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="grid grid-cols-2 gap-3 mb-4 [&>*]:min-w-0">
         <div class="bg-[#0B0E14] p-3 rounded-lg border border-[#2D3748]">
           <span class="text-[11px] text-[#8892b0] block font-medium">Wallet Balance</span>
-          <span id="wallet-balance" class="text-xl font-bold mono text-[#dfe2ee]">$0.00</span>
+          <span id="wallet-balance" class="text-lg sm:text-xl font-bold mono text-[#dfe2ee] truncate block">$0.00</span>
         </div>
         <div class="bg-[#0B0E14] p-3 rounded-lg border border-[#2D3748]">
           <span class="text-[11px] text-[#8892b0] block font-medium">Available Balance</span>
-          <span id="avail-balance" class="text-xl font-bold mono text-[#22C55E]">$0.00</span>
+          <span id="avail-balance" class="text-lg sm:text-xl font-bold mono text-[#22C55E] truncate block">$0.00</span>
         </div>
         <div class="bg-[#0B0E14] p-3 rounded-lg border border-[#2D3748]">
           <span class="text-[11px] text-[#8892b0] block font-medium">Used Margin</span>
@@ -163,7 +171,7 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-4 gap-2 text-center text-xs bg-[#0B0E14]/60 p-2.5 rounded border border-[#2D3748]/50">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs bg-[#0B0E14]/60 p-2.5 rounded border border-[#2D3748]/50">
         <div>
           <span class="text-[10px] text-[#8892b0] block">Today's PnL</span>
           <span id="pnl-today" class="mono font-bold text-[#dfe2ee]">$0.00</span>
@@ -263,7 +271,7 @@
       <p class="text-xs text-[#8892b0] mt-1">Bot will automatically execute when strategy confidence reaches threshold (80%).</p>
     </div>
 
-    <div id="pos-active-view" class="hidden grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+    <div id="pos-active-view" class="hidden grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
       <div class="bg-[#0B0E14] p-3 rounded border border-[#2D3748]">
         <span class="text-[10px] text-[#8892b0] block">Symbol / Side</span>
         <span id="pos-symbol-side" class="mono font-bold text-base text-[#dfe2ee]">BTC/USDT LONG</span>
@@ -465,13 +473,13 @@
       document.getElementById('live-price').textContent = '$--.--';
     }
     
-    document.getElementById('ticker-high').textContent = t.high_24h ? '$' + fmt(t.high_24h) : 'N/A';
-    document.getElementById('ticker-low').textContent = t.low_24h ? '$' + fmt(t.low_24h) : 'N/A';
-    document.getElementById('ticker-vol').textContent = t.volume_24h ? fmt(t.volume_24h, 2) + ' BTC' : 'N/A';
-    document.getElementById('ticker-spread').textContent = t.spread ? '$' + fmt(t.spread, 2) : 'N/A';
-    document.getElementById('ticker-bid').textContent = t.bid ? '$' + fmt(t.bid) : 'N/A';
-    document.getElementById('ticker-ask').textContent = t.ask ? '$' + fmt(t.ask) : 'N/A';
-    document.getElementById('ticker-latency').textContent = (t.latency_ms || 0) + ' ms';
+    document.getElementById('ticker-high').textContent = t.high_24h != null ? '$' + fmt(t.high_24h) : '$--.--';
+    document.getElementById('ticker-low').textContent = t.low_24h != null ? '$' + fmt(t.low_24h) : '$--.--';
+    document.getElementById('ticker-vol').textContent = t.volume_24h != null ? fmt(t.volume_24h, 2) + ' BTC' : '-- BTC';
+    document.getElementById('ticker-spread').textContent = t.spread != null ? '$' + fmt(t.spread, 2) : '$0.00';
+    document.getElementById('ticker-bid').textContent = t.bid != null ? '$' + fmt(t.bid) : '$--.--';
+    document.getElementById('ticker-ask').textContent = t.ask != null ? '$' + fmt(t.ask) : '$--.--';
+    document.getElementById('ticker-latency').textContent = (t.latency_ms ?? 0) + ' ms';
 
     const chg = t.change_24h_pct || 0;
     const chgBadge = document.getElementById('price-change-badge');
@@ -565,7 +573,7 @@
 
     // Auto-Trade Switch State
     const autoTradeOn = data.auto_trade_enabled !== false;
-    document.getElementById('auto-trade-text').textContent = 'Auto-Trade: ' + (autoTradeOn ? 'ON' : 'OFF');
+    document.getElementById('auto-trade-text').textContent = 'Auto: ' + (autoTradeOn ? 'ON' : 'OFF');
     document.getElementById('auto-trade-dot').className = 'w-2 h-2 rounded-full ' + (autoTradeOn ? 'bg-[#22C55E]' : 'bg-[#EF4444]');
 
     // Start/Stop Buttons State
@@ -581,14 +589,17 @@
   function updateNetworkBadge(state) {
     const badge = document.getElementById('net-badge');
     const dot = document.getElementById('net-dot');
+    const dotMobile = document.getElementById('net-dot-mobile');
     const txt = document.getElementById('net-text');
     if (state === "connected") {
-      badge.className = "bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1";
+      badge.className = "hidden sm:flex bg-[#22C55E]/10 border border-[#22C55E]/30 text-[#22C55E] text-[10px] font-bold px-2 py-0.5 rounded items-center gap-1";
       dot.className = "w-1.5 h-1.5 rounded-full bg-[#22C55E]";
+      if (dotMobile) dotMobile.className = "sm:hidden w-2 h-2 rounded-full bg-[#22C55E]";
       txt.textContent = "Connected";
     } else {
-      badge.className = "bg-[#F97316]/10 border border-[#F97316]/30 text-[#F97316] text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1";
+      badge.className = "hidden sm:flex bg-[#F97316]/10 border border-[#F97316]/30 text-[#F97316] text-[10px] font-bold px-2 py-0.5 rounded items-center gap-1";
       dot.className = "w-1.5 h-1.5 rounded-full bg-[#F97316]";
+      if (dotMobile) dotMobile.className = "sm:hidden w-2 h-2 rounded-full bg-[#F97316]";
       txt.textContent = "Reconnecting...";
     }
   }

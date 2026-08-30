@@ -168,12 +168,42 @@ def fetch_candles(exchange, symbol=None, timeframe=None, limit=None):
 
 
 def get_wallet_info(exchange, currency="USDT"):
-    """Return dictionary of wallet metrics: wallet_balance, available_balance, used_margin."""
-    try:
-        balance = retry_api_call(lambda: exchange.fetch_balance(), func_name="fetch_balance")
+    """Return dictionary of wallet metrics: wallet_balance, available_balance, used_margin.
+
+    For Bybit derivatives (swap/futures), the balance lives in the UNIFIED account.
+    A plain fetch_balance() returns the spot wallet (always $0 for derivatives-only accounts).
+    We try UNIFIED first, then CONTRACT, then fall back to the default spot call.
+    """
+    def _extract(balance):
         total = float(balance.get("total", {}).get(currency, 0) or 0.0)
-        free = float(balance.get("free", {}).get(currency, 0) or 0.0)
-        used = float(balance.get("used", {}).get(currency, 0) or 0.0)
+        free  = float(balance.get("free",  {}).get(currency, 0) or 0.0)
+        used  = float(balance.get("used",  {}).get(currency, 0) or 0.0)
+        return total, free, used
+
+    try:
+        if config.TRADE_DERIVATIVES:
+            # Try UNIFIED account first (Bybit UTA accounts), then CONTRACT (legacy)
+            for account_type in ("UNIFIED", "CONTRACT"):
+                try:
+                    balance = retry_api_call(
+                        lambda at=account_type: exchange.fetch_balance(params={"accountType": at}),
+                        func_name=f"fetch_balance({account_type})"
+                    )
+                    total, free, used = _extract(balance)
+                    if total > 0 or free > 0:
+                        log.debug(f"[data_fetcher] Balance from {account_type}: {total} USDT total")
+                        return {
+                            "wallet_balance": round(total, 2),
+                            "available_balance": round(free, 2),
+                            "used_margin": round(used, 2),
+                            "max_risk_pct": config.RISK_PER_TRADE_PCT
+                        }
+                except Exception as inner_e:
+                    log.debug(f"[data_fetcher] fetch_balance({account_type}) failed: {inner_e}")
+
+        # Fallback: default fetch_balance (spot, or whatever ccxt chooses)
+        balance = retry_api_call(lambda: exchange.fetch_balance(), func_name="fetch_balance")
+        total, free, used = _extract(balance)
         return {
             "wallet_balance": round(total, 2),
             "available_balance": round(free, 2),

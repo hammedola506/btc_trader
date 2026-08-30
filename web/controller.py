@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 import logging
@@ -136,7 +137,7 @@ def _bot_loop():
             update_state(position=open_position, wallet=initial_wallet)
 
         # Dispatch Startup Notification
-        hostname = socket.gethostname()
+        hostname = os.environ.get("BOT_HOSTNAME") or socket.gethostname()
         mode_str = "DEMO TRADING" if getattr(config, "USE_DEMO_TRADING", False) else ("TESTNET" if config.USE_TESTNET else "LIVE")
         startup_notif = templates.build_startup_summary(
             bot_version="2.0.0",

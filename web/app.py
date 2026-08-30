@@ -326,11 +326,81 @@ def notifications_stats():
     import notifications
     return jsonify(notifications.get_statistics())
 
-if __name__ == "__main__":
-    if os.environ.get("AUTO_START_BOT", "false").lower() in ("true", "1", "yes"):
-        log.info("AUTO_START_BOT is enabled. Launching trading bot engine thread...")
+@app.route("/api/debug_balance", methods=["GET"])
+def debug_balance():
+    """Unauthenticated diagnostic endpoint to debug wallet balance retrieval."""
+    from data import data_fetcher
+    from web.controller import get_exchange_instance
+    import traceback
+
+    try:
+        ex = get_exchange_instance()
+        if not ex:
+            return jsonify({
+                "error": "Exchange instance not initialized",
+                "api_key_configured": bool(config.API_KEY),
+                "api_key_prefix": config.API_KEY[:4] if config.API_KEY else None
+            }), 500
+
+        diag_results = {}
+        
+        # Test 1: UNIFIED fetch
+        try:
+            bal_unified = ex.fetch_balance(params={"accountType": "UNIFIED"})
+            diag_results["UNIFIED"] = {
+                "success": True,
+                "usdt_total": bal_unified.get("total", {}).get("USDT"),
+                "usdt_free": bal_unified.get("free", {}).get("USDT")
+            }
+        except Exception as e:
+            diag_results["UNIFIED"] = {
+                "success": False,
+                "error": str(e),
+                "traceback": traceback.format_exc()
+            }
+
+        # Test 2: Default fetch
+        try:
+            bal_default = ex.fetch_balance()
+            diag_results["default"] = {
+                "success": True,
+                "usdt_total": bal_default.get("total", {}).get("USDT"),
+                "usdt_free": bal_default.get("free", {}).get("USDT")
+            }
+        except Exception as e:
+            diag_results["default"] = {
+                "success": False,
+                "error": str(e)
+            }
+
+        return jsonify({
+            "config": {
+                "USE_DEMO_TRADING": getattr(config, "USE_DEMO_TRADING", False),
+                "USE_TESTNET": config.USE_TESTNET,
+                "TRADE_DERIVATIVES": config.TRADE_DERIVATIVES,
+                "API_KEY_PREFIX": config.API_KEY[:4] if config.API_KEY else None,
+                "EXCHANGE_ID": config.EXCHANGE_ID
+            },
+            "exchange_demo_trading_property": getattr(ex, "demo_trading", None),
+            "diagnostics": diag_results
+        })
+    except Exception as e:
+        return jsonify({
+            "error": "Critical debug failure",
+            "message": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+# Auto-start bot under Gunicorn/production server if requested
+if os.environ.get("AUTO_START_BOT", "false").lower() in ("true", "1", "yes"):
+    state = get_state()
+    if state["status"] != "running":
+        logging.warning("AUTO_START_BOT is enabled in environment. Starting bot engine thread...")
         start_bot()
 
+
+if __name__ == "__main__":
     host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", 5000))
     log.info(f"Starting NSLUX Web Dashboard on http://{host}:{port}")
